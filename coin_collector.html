@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coin Collector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+        #coin-count, #prestige-points {
+            font-size: 1.5em;
+            margin-top: 10px;
+        }
+        #collect-btn {
+            font-size: 1.5em;
+            padding: 10px 20px;
+            margin: 20px;
+        }
+        #upgrades, #achievements {
+            margin-top: 30px;
+        }
+        .upgrade, .achievement {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 10px auto;
+            width: 220px;
+            background-color: #fff;
+        }
+        .upgrade button {
+            margin-top: 10px;
+        }
+        #prestige-section {
+            margin-top: 40px;
+        }
+        #prestige-btn {
+            padding: 10px 20px;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        #save-btn, #load-btn {
+            margin: 10px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Coin Collector</h1>
+    <div id="coin-count">Coins: 0</div>
+    <div id="prestige-points">Prestige Points: 0</div>
+    <button id="collect-btn">Collect Coins</button>
+
+    <div id="upgrades">
+        <h2>Upgrades</h2>
+        <div class="upgrade">
+            <strong>Auto Collector</strong>
+            <p>Automatically collects 1 coin every second.</p>
+            <p>Cost: <span id="auto-collector-cost">50</span> coins</p>
+            <button id="buy-auto-collector">Buy</button>
+        </div>
+        <div class="upgrade">
+            <strong>Double Coins</strong>
+            <p>Double the coins per click.</p>
+            <p>Cost: <span id="double-coins-cost">100</span> coins</p>
+            <button id="buy-double-coins">Buy</button>
+        </div>
+        <!-- New Upgrades -->
+        <div class="upgrade">
+            <strong>Super Auto Collector</strong>
+            <p>Auto Collector collects 5 coins every second.</p>
+            <p>Cost: <span id="super-auto-collector-cost">500</span> coins</p>
+            <button id="buy-super-auto-collector">Buy</button>
+        </div>
+        <div class="upgrade">
+            <strong>Triple Coins</strong>
+            <p>Triple the coins per click.</p>
+            <p>Cost: <span id="triple-coins-cost">1000</span> coins</p>
+            <button id="buy-triple-coins">Buy</button>
+        </div>
+    </div>
+
+    <div id="prestige-section">
+        <h2>Prestige</h2>
+        <p>Reset your progress to gain Prestige Points, which increase your coin production permanently.</p>
+        <button id="prestige-btn">Prestige</button>
+    </div>
+
+    <div id="achievements">
+        <h2>Achievements</h2>
+        <div id="achievements-list">
+            <!-- Achievements will be displayed here -->
+        </div>
+    </div>
+
+    <button id="save-btn">Save Game</button>
+    <button id="load-btn">Load Game</button>
+
+    <script>
+        let coins = 0;
+        let coinsPerClick = 1;
+        let coinsPerSecond = 0;
+        let autoCollectorOwned = false;
+        let doubleCoinsOwned = false;
+        let superAutoCollectorOwned = false;
+        let tripleCoinsOwned = false;
+        let prestigePoints = 0;
+        let totalCoinsCollected = 0;
+        let achievementsUnlocked = [];
+
+        const coinCountEl = document.getElementById('coin-count');
+        const prestigePointsEl = document.getElementById('prestige-points');
+        const collectBtn = document.getElementById('collect-btn');
+        const autoCollectorCostEl = document.getElementById('auto-collector-cost');
+        const doubleCoinsCostEl = document.getElementById('double-coins-cost');
+        const superAutoCollectorCostEl = document.getElementById('super-auto-collector-cost');
+        const tripleCoinsCostEl = document.getElementById('triple-coins-cost');
+        const buyAutoCollectorBtn = document.getElementById('buy-auto-collector');
+        const buyDoubleCoinsBtn = document.getElementById('buy-double-coins');
+        const buySuperAutoCollectorBtn = document.getElementById('buy-super-auto-collector');
+        const buyTripleCoinsBtn = document.getElementById('buy-triple-coins');
+        const prestigeBtn = document.getElementById('prestige-btn');
+        const achievementsListEl = document.getElementById('achievements-list');
+        const saveBtn = document.getElementById('save-btn');
+        const loadBtn = document.getElementById('load-btn');
+
+        let totalClicks = 0;
+
+        // Define achievements
+        const achievements = [
+            {
+                name: 'First Click',
+                description: 'Collect your first coin.',
+                condition: () => totalClicks >= 1,
+                unlocked: false
+            },
+            {
+                name: 'Getting Started',
+                description: 'Reach 50 coins.',
+                condition: () => coins >= 50,
+                unlocked: false
+            },
+            {
+                name: 'Collector',
+                description: 'Purchase the Auto Collector.',
+                condition: () => autoCollectorOwned,
+                unlocked: false
+            },
+            {
+                name: 'Investor',
+                description: 'Purchase the Double Coins upgrade.',
+                condition: () => doubleCoinsOwned,
+                unlocked: false
+            },
+            {
+                name: 'Wealthy',
+                description: 'Accumulate 500 coins.',
+                condition: () => coins >= 500,
+                unlocked: false
+            },
+            {
+                name: 'Super Collector',
+                description: 'Purchase the Super Auto Collector.',
+                condition: () => superAutoCollectorOwned,
+                unlocked: false
+            },
+            {
+                name: 'Triple Threat',
+                description: 'Purchase the Triple Coins upgrade.',
+                condition: () => tripleCoinsOwned,
+                unlocked: false
+            },
+            {
+                name: 'Prestigious',
+                description: 'Perform your first prestige.',
+                condition: () => prestigePoints >= 1,
+                unlocked: false
+            },
+            {
+                name: 'Millionaire',
+                description: 'Accumulate 1,000,000 total coins.',
+                condition: () => totalCoinsCollected >= 1000000,
+                unlocked: false
+            }
+        ];
+
+        collectBtn.addEventListener('click', () => {
+            let totalMultiplier = 1 + (prestigePoints * 0.1);
+            coins += coinsPerClick * totalMultiplier;
+            totalCoinsCollected += coinsPerClick * totalMultiplier;
+            totalClicks++;
+            updateCoinCount();
+            checkAchievements();
+        });
+
+        buyAutoCollectorBtn.addEventListener('click', () => {
+            const cost = parseInt(autoCollectorCostEl.textContent);
+            if (coins >= cost && !autoCollectorOwned) {
+                coins -= cost;
+                autoCollectorOwned = true;
+                coinsPerSecond += 1;
+                buyAutoCollectorBtn.disabled = true;
+                updateCoinCount();
+                checkAchievements();
+            }
+        });
+
+        buyDoubleCoinsBtn.addEventListener('click', () => {
+            const cost = parseInt(doubleCoinsCostEl.textContent);
+            if (coins >= cost && !doubleCoinsOwned) {
+                coins -= cost;
+                doubleCoinsOwned = true;
+                coinsPerClick *= 2;
+                buyDoubleCoinsBtn.disabled = true;
+                updateCoinCount();
+                checkAchievements();
+            }
+        });
+
+        buySuperAutoCollectorBtn.addEventListener('click', () => {
+            const cost = parseInt(superAutoCollectorCostEl.textContent);
+            if (coins >= cost && !superAutoCollectorOwned) {
+                coins -= cost;
+                superAutoCollectorOwned = true;
+                coinsPerSecond += 5;
+                buySuperAutoCollectorBtn.disabled = true;
+                updateCoinCount();
+                checkAchievements();
+            }
+        });
+
+        buyTripleCoinsBtn.addEventListener('click', () => {
+            const cost = parseInt(tripleCoinsCostEl.textContent);
+            if (coins >= cost && !tripleCoinsOwned) {
+                coins -= cost;
+                tripleCoinsOwned = true;
+                coinsPerClick *= 3;
+                buyTripleCoinsBtn.disabled = true;
+                updateCoinCount();
+                checkAchievements();
+            }
+        });
+
+        prestigeBtn.addEventListener('click', () => {
+            if (coins >= 10000) { // Require at least 10,000 coins to prestige
+                let earnedPrestigePoints = Math.floor(coins / 10000);
+                prestigePoints += earnedPrestigePoints;
+                resetGame();
+                alert(`You have prestiged and earned ${earnedPrestigePoints} Prestige Point(s)!`);
+                updateCoinCount();
+                checkAchievements();
+            } else {
+                alert('You need at least 10,000 coins to prestige.');
+            }
+        });
+
+        saveBtn.addEventListener('click', saveGame);
+        loadBtn.addEventListener('click', loadGame);
+
+        function updateCoinCount() {
+            let totalMultiplier = 1 + (prestigePoints * 0.1);
+            coinCountEl.textContent = 'Coins: ' + Math.floor(coins);
+            prestigePointsEl.textContent = 'Prestige Points: ' + prestigePoints;
+            document.title = `Coins: ${Math.floor(coins)} - Coin Collector`;
+        }
+
+        function startCoinProduction() {
+            setInterval(() => {
+                let totalMultiplier = 1 + (prestigePoints * 0.1);
+                coins += coinsPerSecond * totalMultiplier;
+                totalCoinsCollected += coinsPerSecond * totalMultiplier;
+                updateCoinCount();
+                checkAchievements();
+            }, 1000);
+        }
+
+        function checkAchievements() {
+            achievements.forEach(achievement => {
+                if (!achievement.unlocked && achievement.condition()) {
+                    achievement.unlocked = true;
+                    achievementsUnlocked.push(achievement.name);
+                    displayAchievement(achievement);
+                }
+            });
+        }
+
+        function displayAchievement(achievement) {
+            const achievementDiv = document.createElement('div');
+            achievementDiv.className = 'achievement';
+            achievementDiv.innerHTML = `<strong>${achievement.name}</strong><p>${achievement.description}</p>`;
+            achievementsListEl.appendChild(achievementDiv);
+            alert(`Achievement Unlocked: ${achievement.name}`);
+        }
+
+        function resetGame() {
+            coins = 0;
+            coinsPerClick = 1;
+            coinsPerSecond = 0;
+            autoCollectorOwned = false;
+            doubleCoinsOwned = false;
+            superAutoCollectorOwned = false;
+            tripleCoinsOwned = false;
+            totalClicks = 0;
+
+            // Reset upgrade buttons
+            buyAutoCollectorBtn.disabled = false;
+            buyDoubleCoinsBtn.disabled = false;
+            buySuperAutoCollectorBtn.disabled = false;
+            buyTripleCoinsBtn.disabled = false;
+
+            // Reset achievements (except prestige-related)
+            achievements.forEach(achievement => {
+                if (achievement.name !== 'Prestigious' && achievement.name !== 'Millionaire') {
+                    achievement.unlocked = false;
+                }
+            });
+            achievementsUnlocked = achievementsUnlocked.filter(name => name === 'Prestigious' || name === 'Millionaire');
+            achievementsListEl.innerHTML = '';
+            achievements.filter(a => a.unlocked).forEach(displayAchievement);
+
+            updateCoinCount();
+        }
+
+        function saveGame() {
+            const gameState = {
+                coins,
+                coinsPerClick,
+                coinsPerSecond,
+                autoCollectorOwned,
+                doubleCoinsOwned,
+                superAutoCollectorOwned,
+                tripleCoinsOwned,
+                prestigePoints,
+                totalCoinsCollected,
+                achievementsUnlocked,
+                totalClicks
+            };
+            localStorage.setItem('coinCollectorSave', JSON.stringify(gameState));
+            // alert('Game Saved!');
+        }
+
+        function loadGame() {
+            const savedGame = JSON.parse(localStorage.getItem('coinCollectorSave'));
+            if (savedGame) {
+                coins = savedGame.coins;
+                coinsPerClick = savedGame.coinsPerClick;
+                coinsPerSecond = savedGame.coinsPerSecond;
+                autoCollectorOwned = savedGame.autoCollectorOwned;
+                doubleCoinsOwned = savedGame.doubleCoinsOwned;
+                superAutoCollectorOwned = savedGame.superAutoCollectorOwned;
+                tripleCoinsOwned = savedGame.tripleCoinsOwned;
+                prestigePoints = savedGame.prestigePoints;
+                totalCoinsCollected = savedGame.totalCoinsCollected;
+                achievementsUnlocked = savedGame.achievementsUnlocked;
+                totalClicks = savedGame.totalClicks;
+
+                if (autoCollectorOwned) {
+                    buyAutoCollectorBtn.disabled = true;
+                }
+                if (doubleCoinsOwned) {
+                    buyDoubleCoinsBtn.disabled = true;
+                }
+                if (superAutoCollectorOwned) {
+                    buySuperAutoCollectorBtn.disabled = true;
+                }
+                if (tripleCoinsOwned) {
+                    buyTripleCoinsBtn.disabled = true;
+                }
+
+                // Restore unlocked achievements
+                achievements.forEach(achievement => {
+                    if (achievementsUnlocked.includes(achievement.name)) {
+                        achievement.unlocked = true;
+                        displayAchievement(achievement);
+                    }
+                });
+
+                updateCoinCount();
+                // alert('Game Loaded!');
+            } else {
+                // alert('No saved game found.');
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveGame, 30000);
+
+        // Start coin production
+        startCoinProduction();
+
+        // Load game automatically on start
+        window.onload = loadGame;
+    </script>
+
+</body>
+</html>
