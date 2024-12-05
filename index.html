@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Coin Collector</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Added for mobile responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Mobile responsiveness -->
     <style>
         /* Mobile-first CSS */
         body {
@@ -25,7 +25,7 @@
             width: 80%;
             max-width: 300px;
         }
-        #upgrades, #achievements {
+        #upgrades, #achievements, #mini-game {
             margin-top: 30px;
         }
         .upgrade, .achievement {
@@ -37,7 +37,7 @@
             background-color: #fff;
             box-sizing: border-box;
         }
-        .upgrade button {
+        .upgrade button, .mini-game button {
             margin-top: 10px;
             width: 100%;
             padding: 10px;
@@ -107,6 +107,18 @@
         </div>
     </div>
 
+    <!-- Mini-Game Section -->
+    <div id="mini-game">
+        <h2>Coin Flip Mini-Game</h2>
+        <p>Wager coins on a coin flip. Guess correctly to double your wager!</p>
+        <input type="number" id="wager-amount" placeholder="Enter wager amount" min="1">
+        <div>
+            <button id="guess-heads">Heads</button>
+            <button id="guess-tails">Tails</button>
+        </div>
+        <p id="mini-game-result"></p>
+    </div>
+
     <div id="prestige-section">
         <h2>Prestige</h2>
         <p>Reset your progress to gain Prestige Points, which increase your coin production permanently.</p>
@@ -151,6 +163,12 @@
         const achievementsListEl = document.getElementById('achievements-list');
         const saveBtn = document.getElementById('save-btn');
         const loadBtn = document.getElementById('load-btn');
+
+        // Mini-Game Elements
+        const wagerAmountInput = document.getElementById('wager-amount');
+        const guessHeadsBtn = document.getElementById('guess-heads');
+        const guessTailsBtn = document.getElementById('guess-tails');
+        const miniGameResultEl = document.getElementById('mini-game-result');
 
         let totalClicks = 0;
 
@@ -209,8 +227,17 @@
                 description: 'Accumulate 1,000,000 total coins.',
                 condition: () => totalCoinsCollected >= 1000000,
                 unlocked: false
+            },
+            {
+                name: 'Risk Taker',
+                description: 'Win the Coin Flip mini-game 5 times.',
+                condition: () => miniGameWins >= 5,
+                unlocked: false
             }
         ];
+
+        // Mini-Game Variables
+        let miniGameWins = 0;
 
         collectBtn.addEventListener('click', () => {
             let totalMultiplier = getTotalMultiplier();
@@ -282,6 +309,39 @@
             }
         });
 
+        // Mini-Game Event Listeners
+        guessHeadsBtn.addEventListener('click', () => {
+            playCoinFlip('heads');
+        });
+
+        guessTailsBtn.addEventListener('click', () => {
+            playCoinFlip('tails');
+        });
+
+        function playCoinFlip(guess) {
+            const wager = parseInt(wagerAmountInput.value);
+            if (isNaN(wager) || wager <= 0) {
+                alert('Please enter a valid wager amount.');
+                return;
+            }
+            if (coins < wager) {
+                alert('You do not have enough coins to make that wager.');
+                return;
+            }
+            const outcome = Math.random() < 0.5 ? 'heads' : 'tails';
+            if (guess === outcome) {
+                coins += wager;
+                totalCoinsCollected += wager;
+                miniGameWins++;
+                miniGameResultEl.textContent = `It's ${outcome}! You won ${wager} coins!`;
+            } else {
+                coins -= wager;
+                miniGameResultEl.textContent = `It's ${outcome}! You lost ${wager} coins.`;
+            }
+            updateCoinCount();
+            checkAchievements();
+        }
+
         saveBtn.addEventListener('click', saveGame);
         loadBtn.addEventListener('click', loadGame);
 
@@ -342,6 +402,7 @@
             superAutoCollectorOwned = false;
             tripleCoinsOwned = false;
             totalClicks = 0;
+            miniGameWins = 0;
 
             // Reset upgrade buttons
             buyAutoCollectorBtn.disabled = false;
@@ -394,7 +455,8 @@
                 totalCoinsCollected,
                 achievementsUnlocked,
                 achievementBonus,
-                totalClicks
+                totalClicks,
+                miniGameWins
             };
             localStorage.setItem('coinCollectorSave', JSON.stringify(gameState));
         }
@@ -414,6 +476,7 @@
                 achievementsUnlocked = savedGame.achievementsUnlocked;
                 achievementBonus = savedGame.achievementBonus || achievementsUnlocked.length;
                 totalClicks = savedGame.totalClicks;
+                miniGameWins = savedGame.miniGameWins || 0;
 
                 // Restore upgrades
                 if (autoCollectorOwned) {
