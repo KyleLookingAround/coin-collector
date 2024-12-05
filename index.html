@@ -3,20 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <title>Coin Collector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Added for mobile responsiveness -->
     <style>
+        /* Mobile-first CSS */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             background-color: #f0f0f0;
+            margin: 0;
+            padding: 10px;
         }
         #coin-count, #prestige-points {
             font-size: 1.5em;
             margin-top: 10px;
         }
         #collect-btn {
-            font-size: 1.5em;
+            font-size: 1.2em;
             padding: 10px 20px;
-            margin: 20px;
+            margin: 20px auto;
+            display: block;
+            width: 80%;
+            max-width: 300px;
         }
         #upgrades, #achievements {
             margin-top: 30px;
@@ -25,11 +32,16 @@
             border: 1px solid #ccc;
             padding: 15px;
             margin: 10px auto;
-            width: 220px;
+            width: 100%;
+            max-width: 400px;
             background-color: #fff;
+            box-sizing: border-box;
         }
         .upgrade button {
             margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
         }
         #prestige-section {
             margin-top: 40px;
@@ -38,10 +50,24 @@
             padding: 10px 20px;
             font-size: 1em;
             margin-top: 10px;
+            width: 80%;
+            max-width: 300px;
         }
         #save-btn, #load-btn {
             margin: 10px;
             padding: 10px 20px;
+            width: 40%;
+            max-width: 150px;
+            font-size: 0.9em;
+        }
+        /* Responsive adjustments */
+        @media (min-width: 600px) {
+            #collect-btn, #prestige-btn, .upgrade button {
+                font-size: 1.2em;
+            }
+            #save-btn, #load-btn {
+                font-size: 1em;
+            }
         }
     </style>
 </head>
@@ -54,26 +80,26 @@
 
     <div id="upgrades">
         <h2>Upgrades</h2>
-        <div class="upgrade">
+        <div class="upgrade" id="upgrade-auto-collector">
             <strong>Auto Collector</strong>
             <p>Automatically collects 1 coin every second.</p>
             <p>Cost: <span id="auto-collector-cost">50</span> coins</p>
             <button id="buy-auto-collector">Buy</button>
         </div>
-        <div class="upgrade">
+        <div class="upgrade" id="upgrade-double-coins">
             <strong>Double Coins</strong>
             <p>Double the coins per click.</p>
             <p>Cost: <span id="double-coins-cost">100</span> coins</p>
             <button id="buy-double-coins">Buy</button>
         </div>
         <!-- New Upgrades -->
-        <div class="upgrade">
+        <div class="upgrade" id="upgrade-super-auto-collector">
             <strong>Super Auto Collector</strong>
             <p>Auto Collector collects 5 coins every second.</p>
             <p>Cost: <span id="super-auto-collector-cost">500</span> coins</p>
             <button id="buy-super-auto-collector">Buy</button>
         </div>
-        <div class="upgrade">
+        <div class="upgrade" id="upgrade-triple-coins">
             <strong>Triple Coins</strong>
             <p>Triple the coins per click.</p>
             <p>Cost: <span id="triple-coins-cost">1000</span> coins</p>
@@ -108,6 +134,7 @@
         let prestigePoints = 0;
         let totalCoinsCollected = 0;
         let achievementsUnlocked = [];
+        let achievementBonus = 0;
 
         const coinCountEl = document.getElementById('coin-count');
         const prestigePointsEl = document.getElementById('prestige-points');
@@ -138,7 +165,7 @@
             {
                 name: 'Getting Started',
                 description: 'Reach 50 coins.',
-                condition: () => coins >= 50,
+                condition: () => totalCoinsCollected >= 50,
                 unlocked: false
             },
             {
@@ -156,7 +183,7 @@
             {
                 name: 'Wealthy',
                 description: 'Accumulate 500 coins.',
-                condition: () => coins >= 500,
+                condition: () => totalCoinsCollected >= 500,
                 unlocked: false
             },
             {
@@ -186,7 +213,7 @@
         ];
 
         collectBtn.addEventListener('click', () => {
-            let totalMultiplier = 1 + (prestigePoints * 0.1);
+            let totalMultiplier = getTotalMultiplier();
             coins += coinsPerClick * totalMultiplier;
             totalCoinsCollected += coinsPerClick * totalMultiplier;
             totalClicks++;
@@ -200,9 +227,9 @@
                 coins -= cost;
                 autoCollectorOwned = true;
                 coinsPerSecond += 1;
-                buyAutoCollectorBtn.disabled = true;
                 updateCoinCount();
                 checkAchievements();
+                hideUpgrade('upgrade-auto-collector');
             }
         });
 
@@ -212,9 +239,9 @@
                 coins -= cost;
                 doubleCoinsOwned = true;
                 coinsPerClick *= 2;
-                buyDoubleCoinsBtn.disabled = true;
                 updateCoinCount();
                 checkAchievements();
+                hideUpgrade('upgrade-double-coins');
             }
         });
 
@@ -224,9 +251,9 @@
                 coins -= cost;
                 superAutoCollectorOwned = true;
                 coinsPerSecond += 5;
-                buySuperAutoCollectorBtn.disabled = true;
                 updateCoinCount();
                 checkAchievements();
+                hideUpgrade('upgrade-super-auto-collector');
             }
         });
 
@@ -236,9 +263,9 @@
                 coins -= cost;
                 tripleCoinsOwned = true;
                 coinsPerClick *= 3;
-                buyTripleCoinsBtn.disabled = true;
                 updateCoinCount();
                 checkAchievements();
+                hideUpgrade('upgrade-triple-coins');
             }
         });
 
@@ -259,15 +286,20 @@
         loadBtn.addEventListener('click', loadGame);
 
         function updateCoinCount() {
-            let totalMultiplier = 1 + (prestigePoints * 0.1);
+            let totalMultiplier = getTotalMultiplier();
             coinCountEl.textContent = 'Coins: ' + Math.floor(coins);
             prestigePointsEl.textContent = 'Prestige Points: ' + prestigePoints;
             document.title = `Coins: ${Math.floor(coins)} - Coin Collector`;
         }
 
+        function getTotalMultiplier() {
+            let multiplier = 1 + (prestigePoints * 0.1) + (achievementBonus * 0.01);
+            return multiplier;
+        }
+
         function startCoinProduction() {
             setInterval(() => {
-                let totalMultiplier = 1 + (prestigePoints * 0.1);
+                let totalMultiplier = getTotalMultiplier();
                 coins += coinsPerSecond * totalMultiplier;
                 totalCoinsCollected += coinsPerSecond * totalMultiplier;
                 updateCoinCount();
@@ -280,6 +312,7 @@
                 if (!achievement.unlocked && achievement.condition()) {
                     achievement.unlocked = true;
                     achievementsUnlocked.push(achievement.name);
+                    achievementBonus++;
                     displayAchievement(achievement);
                 }
             });
@@ -290,7 +323,14 @@
             achievementDiv.className = 'achievement';
             achievementDiv.innerHTML = `<strong>${achievement.name}</strong><p>${achievement.description}</p>`;
             achievementsListEl.appendChild(achievementDiv);
-            alert(`Achievement Unlocked: ${achievement.name}`);
+            alert(`Achievement Unlocked: ${achievement.name}\nYou gained a 1% bonus to coin production!`);
+        }
+
+        function hideUpgrade(upgradeId) {
+            const upgradeElement = document.getElementById(upgradeId);
+            if (upgradeElement) {
+                upgradeElement.style.display = 'none';
+            }
         }
 
         function resetGame() {
@@ -309,6 +349,9 @@
             buySuperAutoCollectorBtn.disabled = false;
             buyTripleCoinsBtn.disabled = false;
 
+            // Show all upgrades
+            showAllUpgrades();
+
             // Reset achievements (except prestige-related)
             achievements.forEach(achievement => {
                 if (achievement.name !== 'Prestigious' && achievement.name !== 'Millionaire') {
@@ -316,10 +359,26 @@
                 }
             });
             achievementsUnlocked = achievementsUnlocked.filter(name => name === 'Prestigious' || name === 'Millionaire');
+            achievementBonus = achievementsUnlocked.length;
             achievementsListEl.innerHTML = '';
             achievements.filter(a => a.unlocked).forEach(displayAchievement);
 
             updateCoinCount();
+        }
+
+        function showAllUpgrades() {
+            const upgradeIds = [
+                'upgrade-auto-collector',
+                'upgrade-double-coins',
+                'upgrade-super-auto-collector',
+                'upgrade-triple-coins'
+            ];
+            upgradeIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.style.display = 'block';
+                }
+            });
         }
 
         function saveGame() {
@@ -334,10 +393,10 @@
                 prestigePoints,
                 totalCoinsCollected,
                 achievementsUnlocked,
+                achievementBonus,
                 totalClicks
             };
             localStorage.setItem('coinCollectorSave', JSON.stringify(gameState));
-            // alert('Game Saved!');
         }
 
         function loadGame() {
@@ -353,19 +412,21 @@
                 prestigePoints = savedGame.prestigePoints;
                 totalCoinsCollected = savedGame.totalCoinsCollected;
                 achievementsUnlocked = savedGame.achievementsUnlocked;
+                achievementBonus = savedGame.achievementBonus || achievementsUnlocked.length;
                 totalClicks = savedGame.totalClicks;
 
+                // Restore upgrades
                 if (autoCollectorOwned) {
-                    buyAutoCollectorBtn.disabled = true;
+                    hideUpgrade('upgrade-auto-collector');
                 }
                 if (doubleCoinsOwned) {
-                    buyDoubleCoinsBtn.disabled = true;
+                    hideUpgrade('upgrade-double-coins');
                 }
                 if (superAutoCollectorOwned) {
-                    buySuperAutoCollectorBtn.disabled = true;
+                    hideUpgrade('upgrade-super-auto-collector');
                 }
                 if (tripleCoinsOwned) {
-                    buyTripleCoinsBtn.disabled = true;
+                    hideUpgrade('upgrade-triple-coins');
                 }
 
                 // Restore unlocked achievements
@@ -377,9 +438,6 @@
                 });
 
                 updateCoinCount();
-                // alert('Game Loaded!');
-            } else {
-                // alert('No saved game found.');
             }
         }
 
