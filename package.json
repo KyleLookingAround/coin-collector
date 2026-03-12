@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "papaparse": "^5.5.3",
-    "plotly.js": "^3.4.0",
+    "plotly.js": "^2.35.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-plotly.js": "^2.6.0"
